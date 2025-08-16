@@ -1,0 +1,38 @@
+name: 原生 Windows 环境打包
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest  # 直接使用 GitHub 提供的 Windows 虚拟机
+    
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.5'  # 指定你的 Python 版本（与项目兼容）
+
+      - name: 安装项目依赖
+        run: |
+          cd src  # 进入源代码目录（你的 py、spec、requirements 所在目录）
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt  # 安装依赖
+          pip install pyinstaller  # 安装 PyInstaller
+
+      - name: 使用 PyInstaller 打包
+        run: |
+          cd src
+          pyinstaller main.spec  # 替换为你的 spec 文件名（如 main.spec）
+
+      - name: 上传打包结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe-native
+          path: src/dist/  # Windows 环境下，PyInstaller 默认输出到 dist 目录
