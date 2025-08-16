@@ -1,0 +1,59 @@
+name: 原生 Windows 环境打包
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 设置 Python 环境
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.5'
+          # 关键：保留依赖安装路径，避免 PyInstaller 找不到库
+          cache: 'pip'
+
+      - name: 安装项目依赖（含打包工具）
+        run: |
+          # 切换到 src 目录（确保 requirements.txt 在此处）
+          cd src
+          # 升级 pip 并安装依赖（显式指定，确保环境一致性）
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          # 安装 PyInstaller（指定版本，避免兼容性问题）
+          pip install pyinstaller==6.8.0  # 与 Python 3.13 兼容的稳定版本
+
+      - name: 查看依赖安装路径（调试用，可选）
+        run: |
+          cd src
+          # 输出第三方库安装位置，确认 PyInstaller 能访问
+          python -c "import site; print('第三方库路径：', site.getsitepackages())"
+
+      - name: 使用 PyInstaller 打包（指定工作目录和路径）
+        run: |
+          # 切换到 src 目录（spec 文件所在目录）
+          cd src
+          # 关键：通过 --paths 参数显式指定第三方库路径，确保 PyInstaller 识别
+          # 获取 site-packages 路径并传递给 PyInstaller
+          $site_packages = python -c "import site; print(site.getsitepackages()[0])"
+          pyinstaller main.spec --paths="$site_packages"
+
+      - name: 检查打包结果（调试用，可选）
+        run: |
+          # 查看 dist 目录结构，确认是否生成可执行文件和依赖
+          ls src/dist/main  # 假设你的 exe 输出在 dist/main 目录
+
+      - name: 上传打包结果
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe-native
+          # 注意：若 exe 在 dist/main 目录，路径需更精确
+          path: src/dist/main/  # 替换为实际生成 exe 的目录（含所有依赖文件）
